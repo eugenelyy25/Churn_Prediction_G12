@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -16,9 +15,14 @@ from sklearn.svm import SVC
 from xgboost import XGBClassifier
 from sklearn.ensemble import AdaBoostClassifier
 
+# Page config and banner
 st.set_page_config(layout="wide")
-st.image("https://download.logo.wine/logo/University_of_Malaya/University_of_Malaya-Logo.wine.png", use_container_width=True)
+st.image(
+    "https://download.logo.wine/logo/University_of_Malaya/University_of_Malaya-Logo.wine.png",
+    use_container_width=True
+)
 
+# Description block
 st.markdown("""
 <div style="background-color: #f0f2f6; padding: 10px 20px; border-radius: 10px;">
     <h2 style="color:#333;">Customer Churn Prediction App</h2>
@@ -29,6 +33,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# File upload
 st.sidebar.header("Upload Data")
 uploaded_file = st.sidebar.file_uploader("Upload your input CSV file", type=["csv"])
 
@@ -43,17 +48,24 @@ if uploaded_file is not None:
     st.subheader("Missing Values")
     st.write(df.isnull().sum())
 
+    # Preprocessing
     df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')
     df.dropna(inplace=True)
 
-    # Encode categorical columns
     cat_cols = df.select_dtypes(include='object').columns.tolist()
     if 'Churn' in cat_cols:
         cat_cols.remove('Churn')
     encoder = OrdinalEncoder()
     df[cat_cols] = encoder.fit_transform(df[cat_cols])
 
-    # Sidebar option to show visualizations
+    # Correlation Heatmap
+    st.subheader("Correlation Heatmap")
+    numeric_df = df.select_dtypes(include=[np.number])
+    fig, ax = plt.subplots(figsize=(12, 6))
+    sns.heatmap(numeric_df.corr(), annot=True, fmt=".2f", cmap="coolwarm", ax=ax)
+    st.pyplot(fig)
+
+    # Bivariate analysis
     if st.sidebar.checkbox("Show Bivariate Analysis"):
         st.subheader("Bivariate Analysis")
 
@@ -66,7 +78,7 @@ if uploaded_file is not None:
         fig3 = px.box(df, x='Churn', y='TotalCharges', color='Churn')
         st.plotly_chart(fig3, use_container_width=True)
 
-    # Prepare data for modeling
+    # Model Preparation
     X = df.drop(['Churn', 'customerID'], axis=1, errors='ignore')
     y = df['Churn'].apply(lambda x: 1 if x == "Yes" or x == 1 else 0)
 
@@ -74,12 +86,13 @@ if uploaded_file is not None:
     X_scaled = scaler.fit_transform(X)
     X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
 
+    # Models
     models = {
         "Logistic Regression": LogisticRegression(max_iter=200),
         "K-Nearest Neighbors": KNeighborsClassifier(n_neighbors=5),
         "Support Vector Machine": SVC(kernel='rbf', probability=True),
         "XGBoost": XGBClassifier(use_label_encoder=False, eval_metric='logloss'),
-        "LogReg + AdaBoost": AdaBoostClassifier(base_estimator=LogisticRegression(max_iter=200))
+        "LogReg + AdaBoost": AdaBoostClassifier(estimator=LogisticRegression(max_iter=200))  # ✅ FIXED HERE
     }
 
     st.header("Model Training and Evaluation")
@@ -98,8 +111,10 @@ if uploaded_file is not None:
             st.write("Confusion Matrix:")
             st.write(confusion_matrix(y_test, y_pred))
 
+    # Model Comparison
     st.subheader("Model Comparison")
     comparison_df = pd.DataFrame.from_dict(model_results, orient='index', columns=["Accuracy"]).sort_values(by="Accuracy", ascending=False)
     st.bar_chart(comparison_df)
+
 else:
     st.warning("Please upload a dataset to continue.")
