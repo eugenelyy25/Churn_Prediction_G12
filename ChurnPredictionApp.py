@@ -1,21 +1,32 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 import seaborn as sns
+import matplotlib.pyplot as plt
 import plotly.express as px
-import plotly.graph_objects as go
-from sklearn.preprocessing import OrdinalEncoder
+
 from sklearn.model_selection import train_test_split
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.preprocessing import OrdinalEncoder, StandardScaler
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
 from sklearn.linear_model import LogisticRegression
-from sklearn.neural_network import MLPClassifier
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from xgboost import XGBClassifier
+from sklearn.ensemble import AdaBoostClassifier
 
-st.set_page_config(page_title="Telco Churn Data App", layout="wide")
-st.title("Telco Customer Churn Analysis")
+st.set_page_config(layout="wide")
+st.image("https://download.logo.wine/logo/University_of_Malaya/University_of_Malaya-Logo.wine.png", use_column_width=True)
 
+st.markdown("""
+<div style="background-color: #f0f2f6; padding: 10px 20px; border-radius: 10px;">
+    <h2 style="color:#333;">Customer Churn Prediction App</h2>
+    <p style="color:#555;">
+        This interactive dashboard allows users to explore churn data, understand customer behavior,
+        and compare the performance of various machine learning models used to predict customer churn.
+    </p>
+</div>
+""", unsafe_allow_html=True)
 
 st.sidebar.header("Upload Data")
 uploaded_file = st.sidebar.file_uploader("Upload your input CSV file", type=["csv"])
@@ -24,71 +35,70 @@ if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
     st.success("Data uploaded successfully!")
 
-    st.subheader("Data Preview")
+    st.header("Data Overview")
     st.dataframe(df.head())
-
     st.write(f"Rows: {df.shape[0]}, Columns: {df.shape[1]}")
-    st.subheader("Dataset Info")
-    st.text(str(df.info()))
-    
-    st.subheader("Summary Statistics")
-    st.dataframe(df.describe(include='all').T)
-
-    # Convert TotalCharges to numeric
-    df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')
 
     st.subheader("Missing Values")
     st.write(df.isnull().sum())
 
-    # Example visualization
-    st.subheader("Distribution of Total Charges")
-    fig = px.histogram(df, x='TotalCharges', nbins=50, title='Total Charges Distribution')
-    st.plotly_chart(fig)
+    df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')
+    df.dropna(inplace=True)
 
-    # Encoding categorical columns
+    # Encode categorical columns
     cat_cols = df.select_dtypes(include='object').columns.tolist()
     if 'Churn' in cat_cols:
         cat_cols.remove('Churn')
     encoder = OrdinalEncoder()
     df[cat_cols] = encoder.fit_transform(df[cat_cols])
 
-    # Drop rows with missing values
-    df = df.dropna()
+    # Sidebar option to show visualizations
+    if st.sidebar.checkbox("Show Bivariate Analysis"):
+        st.subheader("Bivariate Analysis")
 
-    st.subheader("Correlation Heatmap")
-    numeric_df = df.select_dtypes(include=[np.number])  # only numeric columns
-    if numeric_df.shape[1] >= 2:
-        fig2, ax = plt.subplots(figsize=(12, 8))
-        sns.heatmap(numeric_df.corr(), annot=True, fmt=".2f", cmap="coolwarm", ax=ax)
-        st.pyplot(fig2)
-    else:
-        st.warning("Not enough numeric data to display a correlation heatmap.")
+        fig1 = px.histogram(df, x='Contract', color='Churn', barmode='group')
+        st.plotly_chart(fig1, use_container_width=True)
 
-    # ML Section
-    st.header("Model Training")
+        fig2 = px.box(df, x='Churn', y='MonthlyCharges', color='Churn')
+        st.plotly_chart(fig2, use_container_width=True)
 
+        fig3 = px.box(df, x='Churn', y='TotalCharges', color='Churn')
+        st.plotly_chart(fig3, use_container_width=True)
+
+    # Prepare data for modeling
     X = df.drop(['Churn', 'customerID'], axis=1, errors='ignore')
     y = df['Churn'].apply(lambda x: 1 if x == "Yes" or x == 1 else 0)
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
 
-    model_option = st.selectbox("Choose a model", ["Decision Tree", "Logistic Regression", "Neural Network"])
+    models = {
+        "Logistic Regression": LogisticRegression(max_iter=200),
+        "K-Nearest Neighbors": KNeighborsClassifier(n_neighbors=5),
+        "Support Vector Machine": SVC(kernel='rbf', probability=True),
+        "XGBoost": XGBClassifier(use_label_encoder=False, eval_metric='logloss'),
+        "LogReg + AdaBoost": AdaBoostClassifier(base_estimator=LogisticRegression(max_iter=200))
+    }
 
-    if model_option == "Decision Tree":
-        model = DecisionTreeClassifier(criterion="gini", random_state=42)
-    elif model_option == "Logistic Regression":
-        model = LogisticRegression(max_iter=200)
-    else:
-        model = MLPClassifier(max_iter=100)
+    st.header("Model Training and Evaluation")
+    model_results = {}
 
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
+    for name, model in models.items():
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        acc = accuracy_score(y_test, y_pred)
+        model_results[name] = acc
 
-    acc = accuracy_score(y_test, y_pred)
-    st.write(f"**Accuracy**: {acc:.2f}")
-    st.text("Classification Report:")
-    st.text(classification_report(y_test, y_pred))
-    st.text("Confusion Matrix:")
-    st.write(confusion_matrix(y_test, y_pred))
+        with st.expander(f"{name} Results"):
+            st.write(f"**Accuracy**: {acc:.2f}")
+            st.text("Classification Report:")
+            st.text(classification_report(y_test, y_pred))
+            st.write("Confusion Matrix:")
+            st.write(confusion_matrix(y_test, y_pred))
+
+    st.subheader("Model Comparison")
+    comparison_df = pd.DataFrame.from_dict(model_results, orient='index', columns=["Accuracy"]).sort_values(by="Accuracy", ascending=False)
+    st.bar_chart(comparison_df)
 else:
     st.warning("Please upload a dataset to continue.")
