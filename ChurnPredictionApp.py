@@ -56,9 +56,13 @@ if uploaded_file is not None:
     df = df.dropna()
 
     st.subheader("Correlation Heatmap")
-    fig2, ax = plt.subplots(figsize=(12, 8))
-    sns.heatmap(df.corr(), annot=True, fmt=".2f", cmap="coolwarm", ax=ax)
-    st.pyplot(fig2)
+    numeric_df = df.select_dtypes(include=[np.number])  # only numeric columns
+    if numeric_df.shape[1] >= 2:
+        fig2, ax = plt.subplots(figsize=(12, 8))
+        sns.heatmap(numeric_df.corr(), annot=True, fmt=".2f", cmap="coolwarm", ax=ax)
+        st.pyplot(fig2)
+    else:
+        st.warning("Not enough numeric data to display a correlation heatmap.")
 
     # ML Section
     st.header("Model Training")
