@@ -17,7 +17,7 @@ from xgboost import XGBClassifier
 from sklearn.ensemble import AdaBoostClassifier
 
 st.set_page_config(layout="wide")
-st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/640px-PNG_transparency_demonstration_1.png", use_column_width=True)
+st.image("https://download.logo.wine/logo/University_of_Malaya/University_of_Malaya-Logo.wine.png", use_column_width=True)
 
 st.markdown("""
 <div style="background-color: #f0f2f6; padding: 10px 20px; border-radius: 10px;">
