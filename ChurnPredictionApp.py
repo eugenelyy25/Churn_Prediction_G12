@@ -19,7 +19,6 @@ from imblearn.combine import SMOTEENN
 
 # Header and intro
 st.set_page_config(layout="wide")
-st.image("https://download.logo.wine/logo/University_of_Malaya/University_of_Malaya-Logo.wine.png", use_container_width=True)
 
 st.markdown("""
 <div style="background-color: #f0f2f6; padding: 10px 20px; border-radius: 10px;">
@@ -37,6 +36,14 @@ uploaded_file = st.sidebar.file_uploader("Upload your Telco CSV file", type=["cs
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
     st.success("Data uploaded successfully!")
+
+    # Required columns check
+    required_cols = ['Churn', 'tenure', 'MonthlyCharges', 'TotalCharges']
+    missing_cols = [col for col in required_cols if col not in df.columns]
+
+    if missing_cols:
+        st.error(f"The following required columns are missing: {', '.join(missing_cols)}")
+        st.stop()
 
     # Label Encoding
     def object_to_int(series):
@@ -107,3 +114,10 @@ if uploaded_file is not None:
     st.bar_chart(comp_df[['Accuracy', 'Precision', 'Recall', 'F1 Score']])
 else:
     st.warning("Please upload a CSV file to continue.")
+
+# Footer logo
+st.markdown("""
+<div style='text-align: center; padding-top: 2em;'>
+    <img src='https://download.logo.wine/logo/University_of_Malaya/University_of_Malaya-Logo.wine.png' width='180' style='max-width: 100%; height: auto;'>
+</div>
+""", unsafe_allow_html=True)
