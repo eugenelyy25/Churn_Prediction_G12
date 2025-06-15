@@ -1,22 +1,23 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
-import seaborn as sns
 import matplotlib.pyplot as plt
+import seaborn as sns
 import plotly.express as px
 
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import OrdinalEncoder, StandardScaler
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
-
+from sklearn.model_selection import train_test_split, RandomizedSearchCV
+from sklearn.preprocessing import StandardScaler, LabelEncoder, OrdinalEncoder
+from sklearn.metrics import classification_report, accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
-from xgboost import XGBClassifier
 from sklearn.ensemble import AdaBoostClassifier
+from xgboost import XGBClassifier
+from imblearn.over_sampling import SMOTE
+from imblearn.under_sampling import RandomUnderSampler
+from imblearn.combine import SMOTEENN
 
-# Page configuration and banner
+# Header and intro
 st.set_page_config(layout="wide")
 st.image("https://download.logo.wine/logo/University_of_Malaya/University_of_Malaya-Logo.wine.png", use_container_width=True)
 
@@ -24,88 +25,85 @@ st.markdown("""
 <div style="background-color: #f0f2f6; padding: 10px 20px; border-radius: 10px;">
     <h2 style="color:#333;">Customer Churn Prediction App</h2>
     <p style="color:#555;">
-        This interactive dashboard allows users to explore churn data, understand customer behavior,
-        and compare the performance of various machine learning models used to predict customer churn.
+        This interactive dashboard explores churn behavior and compares model performance using KNN, SVM, Logistic Regression, XGBoost,
+        and AdaBoost with Logistic Regression. Data balancing and tuning are included.
     </p>
 </div>
 """, unsafe_allow_html=True)
 
-# Sidebar for file upload
-st.sidebar.header("Upload Data")
-uploaded_file = st.sidebar.file_uploader("Upload your input CSV file", type=["csv"])
+# File Upload
+uploaded_file = st.sidebar.file_uploader("Upload your Telco CSV file", type=["csv"])
 
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
     st.success("Data uploaded successfully!")
 
-    st.header("Data Overview")
-    st.dataframe(df.head())
-    st.write(f"Rows: {df.shape[0]}, Columns: {df.shape[1]}")
+    # Label Encoding
+    def object_to_int(series):
+        if series.dtype == 'object':
+            return LabelEncoder().fit_transform(series)
+        return series
 
-    st.subheader("Missing Values")
-    st.write(df.isnull().sum())
+    df = df.apply(object_to_int)
 
-    # Handle and clean data
-    df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')
-    df.dropna(inplace=True)
+    # Show class distribution
+    st.subheader("Class Distribution")
+    st.write(df['Churn'].value_counts())
 
-    # Encode categorical columns except 'Churn'
-    cat_cols = df.select_dtypes(include='object').columns.tolist()
-    if 'Churn' in cat_cols:
-        cat_cols.remove('Churn')
-    encoder = OrdinalEncoder()
-    df[cat_cols] = encoder.fit_transform(df[cat_cols])
+    # Data Split
+    X = df.drop(columns=['Churn'])
+    y = df['Churn'].values
 
-    # Bivariate analysis
-    if st.sidebar.checkbox("Show Bivariate Analysis"):
-        st.subheader("Bivariate Analysis")
+    X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.4, stratify=y, random_state=42)
+    X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, stratify=y_temp, random_state=42)
 
-        fig1 = px.histogram(df, x='Contract', color='Churn', barmode='group')
-        st.plotly_chart(fig1, use_container_width=True)
+    # Data Balancing
+    sm = SMOTE(random_state=42)
+    X_train_res, y_train_res = sm.fit_resample(X_train, y_train)
 
-        fig2 = px.box(df, x='Churn', y='MonthlyCharges', color='Churn')
-        st.plotly_chart(fig2, use_container_width=True)
-
-        fig3 = px.box(df, x='Churn', y='TotalCharges', color='Churn')
-        st.plotly_chart(fig3, use_container_width=True)
-
-    # Model preparation
-    X = df.drop(['Churn', 'customerID'], axis=1, errors='ignore')
-    y = df['Churn'].apply(lambda x: 1 if x == "Yes" or x == 1 else 0)
-
+    # Normalization
+    num_cols = ['tenure', 'MonthlyCharges', 'TotalCharges']
     scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+    X_train_res[num_cols] = scaler.fit_transform(X_train_res[num_cols])
+    X_test[num_cols] = scaler.transform(X_test[num_cols])
 
-    # Model dictionary
+    st.subheader("Model Results")
     models = {
-        "Logistic Regression": LogisticRegression(max_iter=200),
-        "K-Nearest Neighbors": KNeighborsClassifier(n_neighbors=5),
-        "Support Vector Machine": SVC(kernel='rbf', probability=True),
-        "XGBoost": XGBClassifier(use_label_encoder=False, eval_metric='logloss'),
-        "AdaBoost + Logistic Regression": AdaBoostClassifier(estimator=LogisticRegression(max_iter=200))
+        "KNN": KNeighborsClassifier(n_neighbors=11),
+        "SVM": SVC(random_state=1, probability=True),
+        "Logistic Regression": LogisticRegression(max_iter=1000, solver='liblinear', random_state=42),
+        "XGBoost": XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=42),
+        "AdaBoost + LogReg": AdaBoostClassifier(estimator=LogisticRegression(max_iter=1000, random_state=42), n_estimators=50, learning_rate=1, random_state=42)
     }
 
-    st.header("Model Training and Evaluation")
-    model_results = {}
-
+    results = {}
     for name, model in models.items():
-        model.fit(X_train, y_train)
+        model.fit(X_train_res, y_train_res)
         y_pred = model.predict(X_test)
+        y_proba = model.predict_proba(X_test)[:, 1] if hasattr(model, "predict_proba") else None
+
         acc = accuracy_score(y_test, y_pred)
-        model_results[name] = acc
+        prec = precision_score(y_test, y_pred)
+        rec = recall_score(y_test, y_pred)
+        f1 = f1_score(y_test, y_pred)
+        auc = roc_auc_score(y_test, y_proba) if y_proba is not None else None
+
+        results[name] = {"Accuracy": acc, "Precision": prec, "Recall": rec, "F1 Score": f1, "ROC AUC": auc}
 
         with st.expander(f"{name} Results"):
-            st.write(f"**Accuracy**: {acc:.2f}")
-            st.text("Classification Report:")
+            st.write(f"Accuracy: {acc:.4f}")
+            st.write(f"Precision: {prec:.4f}")
+            st.write(f"Recall: {rec:.4f}")
+            st.write(f"F1 Score: {f1:.4f}")
+            if auc: st.write(f"ROC AUC: {auc:.4f}")
             st.text(classification_report(y_test, y_pred))
-            st.write("Confusion Matrix:")
+            st.write("Confusion Matrix")
             st.write(confusion_matrix(y_test, y_pred))
 
-    # Model comparison chart
-    st.subheader("Model Comparison")
-    comparison_df = pd.DataFrame.from_dict(model_results, orient='index', columns=["Accuracy"]).sort_values(by="Accuracy", ascending=False)
-    st.bar_chart(comparison_df)
-
+    # Model Comparison
+    st.subheader("Model Comparison Chart")
+    comp_df = pd.DataFrame(results).T
+    st.dataframe(comp_df.style.highlight_max(axis=0))
+    st.bar_chart(comp_df[['Accuracy', 'Precision', 'Recall', 'F1 Score']])
 else:
-    st.warning("Please upload a dataset to continue.")
+    st.warning("Please upload a CSV file to continue.")
