@@ -3,7 +3,7 @@ pandas
 numpy
 matplotlib
 seaborn
-scikit-learn==1.3.2
+scikit-learn==1.4.2
+imbalanced-learn==0.12.2
 xgboost
 plotly
-imbalanced-learn==0.11.0
