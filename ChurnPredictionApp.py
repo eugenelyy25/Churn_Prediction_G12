@@ -35,7 +35,6 @@ if uploaded_file is not None:
     if missing_cols:
         st.error(f"Missing required columns: {', '.join(missing_cols)}")
 
-        # Show suggestions only when required columns are missing
         st.sidebar.markdown("""
         #### Tips for other datasets:
         - Ensure `target` variable is clearly defined
@@ -53,25 +52,35 @@ if uploaded_file is not None:
     df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')
     df.dropna(inplace=True)
 
-    # Create a copy of the original for EDA purposes
     eda_df = df.copy()
-
-    # Properly map churn for EDA
     eda_df['Churn'] = eda_df['Churn'].replace({'Yes': 1, 'No': 0}) if eda_df['Churn'].dtype == 'object' else eda_df['Churn']
     eda_df['Churn'] = eda_df['Churn'].map({1: 'Yes', 0: 'No'})
 
     st.header("Exploratory Data Analysis")
 
     st.subheader("Churn Distribution")
-    churn_counts = eda_df['Churn'].value_counts()
-    churn_fig = px.pie(names=churn_counts.index, values=churn_counts.values,
-                       color_discrete_sequence=px.colors.sequential.RdBu,
-                       title='Churn Breakdown')
-    st.plotly_chart(churn_fig, use_container_width=True)
+    churn_counts = eda_df['Churn'].value_counts().reset_index()
+    churn_counts.columns = ['Status', 'Quantity']
+    churn_counts['Percentage'] = churn_counts['Quantity'] / churn_counts['Quantity'].sum() * 100
 
-    st.subheader("Monthly Charges by Churn")
-    fig_monthly = px.box(eda_df, x='Churn', y='MonthlyCharges', color='Churn')
-    st.plotly_chart(fig_monthly, use_container_width=True)
+    fig_pie = px.pie(churn_counts,
+                     names='Status',
+                     values='Quantity',
+                     color='Status',
+                     title='Churn Breakdown',
+                     hover_data=['Percentage'],
+                     color_discrete_map={"Yes": "salmon", "No": "skyblue"})
+    fig_pie.update_traces(textinfo='label+percent', hovertemplate='%{label}: %{value} customers<br>%{percent}')
+    st.plotly_chart(fig_pie, use_container_width=True)
+
+    st.subheader("Monthly Charges Distribution by Churn")
+    plt.figure(figsize=(10, 5))
+    sns.kdeplot(data=eda_df, x='MonthlyCharges', hue='Churn', fill=False, common_norm=False)
+    plt.title('Monthly Charges Distribution by Churn')
+    plt.xlabel('Monthly Charges')
+    plt.ylabel('Density')
+    st.pyplot(plt.gcf())
+    plt.clf()
 
     st.subheader("Tenure by Churn")
     fig_tenure = px.box(eda_df, x='Churn', y='tenure', color='Churn')
@@ -81,8 +90,6 @@ if uploaded_file is not None:
     if 'Contract' in eda_df.columns:
         fig_contract = px.histogram(eda_df, x='Contract', color='Churn', barmode='group')
         st.plotly_chart(fig_contract, use_container_width=True)
-
-    # END OF EDA SECTION — do not modify model block below
 
     binary_map = {'Yes': 1, 'No': 0, 'Female': 0, 'Male': 1}
     for col in ['gender', 'Partner', 'Dependents', 'PhoneService', 'PaperlessBilling', 'Churn']:
@@ -135,9 +142,12 @@ if uploaded_file is not None:
 
     st.subheader("Confusion Matrix")
     cm = confusion_matrix(y_test, y_pred)
-    fig_cm = go.Figure(data=go.Heatmap(z=cm, x=['Pred 0','Pred 1'], y=['True 0','True 1'], colorscale='Blues'))
-    fig_cm.update_layout(margin=dict(t=20, l=40, r=40, b=20), template='plotly_white')
-    st.plotly_chart(fig_cm, use_container_width=True)
+    cm_fig, ax_cm = plt.subplots()
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Not Churn', 'Churn'], yticklabels=['Not Churn', 'Churn'], ax=ax_cm)
+    ax_cm.set_xlabel('Predicted')
+    ax_cm.set_ylabel('Actual')
+    ax_cm.set_title('Confusion Matrix')
+    st.pyplot(cm_fig)
 
     st.subheader("Classification Report")
     st.text(classification_report(y_test, y_pred))
