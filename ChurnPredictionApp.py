@@ -61,17 +61,16 @@ if uploaded_file is not None:
     st.plotly_chart(fig_pie, use_container_width=True)
 
     st.subheader("Monthly Charges Distribution by Churn")
-    fig_kde, ax_kde = plt.subplots(figsize=(10, 5), facecolor='#1e1e2f')
-    sns.kdeplot(data=eda_df, x='MonthlyCharges', hue='Churn', fill=False, common_norm=False, ax=ax_kde)
-    ax_kde.set_title('Monthly Charges Distribution by Churn', fontsize=14, color='white')
-    ax_kde.set_xlabel('Monthly Charges', fontsize=12, color='white')
-    ax_kde.set_ylabel('Density', fontsize=12, color='white')
-    ax_kde.set_facecolor('#2c2c3e')
-    fig_kde.patch.set_facecolor('#1e1e2f')
-    for spine in ax_kde.spines.values():
-        spine.set_edgecolor('white')
-    ax_kde.tick_params(colors='white')
-    st.pyplot(fig_kde)
+    fig_kde = px.histogram(eda_df,
+                           x='MonthlyCharges',
+                           color='Churn',
+                           marginal='rug',
+                           opacity=0.7,
+                           nbins=50,
+                           barmode='overlay',
+                           histnorm='density')
+    fig_kde.update_layout(title='Monthly Charges Distribution by Churn', xaxis_title='Monthly Charges', yaxis_title='Density')
+    st.plotly_chart(fig_kde, use_container_width=True)
 
     st.subheader("Tenure by Churn")
     fig_tenure = px.box(eda_df, x='Churn', y='tenure', color='Churn')
@@ -133,12 +132,9 @@ if uploaded_file is not None:
 
     st.subheader("Confusion Matrix")
     cm = confusion_matrix(y_test, y_pred)
-    fig_cm, ax_cm = plt.subplots()
-    sns.heatmap(cm, annot=True, fmt='d', cmap='magma', xticklabels=['Not Churn', 'Churn'], yticklabels=['Not Churn', 'Churn'], ax=ax_cm)
-    ax_cm.set_xlabel('Predicted')
-    ax_cm.set_ylabel('Actual')
-    ax_cm.set_title('Confusion Matrix with Glossy Style')
-    st.pyplot(fig_cm)
+    fig_cm = px.imshow(cm, text_auto=True, color_continuous_scale='Blues', x=['Predicted No', 'Predicted Yes'], y=['Actual No', 'Actual Yes'])
+    fig_cm.update_layout(title="Confusion Matrix", xaxis_title="Predicted", yaxis_title="Actual")
+    st.plotly_chart(fig_cm, use_container_width=True)
 
     st.subheader("Classification Report")
     st.text(classification_report(y_test, y_pred))
