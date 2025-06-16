@@ -79,20 +79,22 @@ if uploaded_file is not None:
             fig_contract = px.histogram(eda_df, x='Contract', color='Churn', barmode='group')
             st.plotly_chart(fig_contract, use_container_width=True)
 
-    # Encoding
-    num_cols = ['tenure', 'MonthlyCharges', 'TotalCharges']
-    cat_cols_ohe = ['PaymentMethod', 'Contract', 'InternetService']
-    cat_cols_le = list(set(df.columns) - set(num_cols) - set(cat_cols_ohe) - {'Churn', 'customerID'})
+    binary_map = {'Yes': 1, 'No': 0, 'Female': 0, 'Male': 1}
+    for col in ['gender', 'Partner', 'Dependents', 'PhoneService', 'PaperlessBilling', 'Churn']:
+        if col in df.columns:
+            df[col] = df[col].map(binary_map)
 
-    for col in cat_cols_le:
-        df[col] = LabelEncoder().fit_transform(df[col])
+    if 'Contract' in df.columns:
+        contract_encoder = OrdinalEncoder(categories=[["Month-to-month", "One year", "Two year"]])
+        df['Contract'] = contract_encoder.fit_transform(df[['Contract']])
 
-    df = pd.get_dummies(df, columns=cat_cols_ohe, drop_first=True)
+    nominal_cols = ['MultipleLines','InternetService','OnlineSecurity','OnlineBackup','DeviceProtection','TechSupport','StreamingTV','StreamingMovies','PaymentMethod']
+    df = pd.get_dummies(df, columns=[col for col in nominal_cols if col in df.columns], drop_first=True)
 
     if 'customerID' in df.columns:
         df.drop('customerID', axis=1, inplace=True)
 
-    # Model
+    # Model section
     X = df.drop('Churn', axis=1)
     y = df['Churn']
 
@@ -102,6 +104,7 @@ if uploaded_file is not None:
     sm = SMOTE(random_state=42)
     X_train_bal, y_train_bal = sm.fit_resample(X_train, y_train)
 
+    num_cols = ['tenure', 'MonthlyCharges', 'TotalCharges']
     scaler = StandardScaler()
     X_train_bal[num_cols] = scaler.fit_transform(X_train_bal[num_cols])
     X_val[num_cols] = scaler.transform(X_val[num_cols])
@@ -123,13 +126,15 @@ if uploaded_file is not None:
     st.dataframe(best_params_df)
 
     y_pred = best_model.predict(X_test)
+    y_pred_bin = np.where(y_pred == 'Yes', 1, 0) if y_pred.dtype == object else y_pred
+    y_test_bin = np.where(y_test == 'Yes', 1, 0) if y_test.dtype == object else y_test
     y_proba = best_model.predict_proba(X_test)[:, 1]
 
-    acc = accuracy_score(y_test, y_pred)
-    prec = precision_score(y_test, y_pred)
-    rec = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-    auc = roc_auc_score(y_test, y_proba)
+    acc = accuracy_score(y_test_bin, y_pred_bin)
+    prec = precision_score(y_test_bin, y_pred_bin)
+    rec = recall_score(y_test_bin, y_pred_bin)
+    f1 = f1_score(y_test_bin, y_pred_bin)
+    auc = roc_auc_score(y_test_bin, y_proba)
 
     st.write(f"**Accuracy**: {acc:.4f}")
     st.write(f"**Precision**: {prec:.4f}")
@@ -138,21 +143,20 @@ if uploaded_file is not None:
     st.write(f"**ROC AUC**: {auc:.4f}")
 
     st.subheader("Confusion Matrix")
-    fig_cm = plt.figure(figsize=(4, 3))
-    sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, fmt='d', cmap='Blues', xticklabels=['Predicted No', 'Predicted Yes'], yticklabels=['Actual No', 'Actual Yes'])
+    plt.figure(figsize=(4, 3))
+    sns.heatmap(confusion_matrix(y_test_bin, y_pred_bin), annot=True, fmt='d', cmap='Blues', xticklabels=['Predicted No', 'Predicted Yes'], yticklabels=['Actual No', 'Actual Yes'])
     plt.xlabel('Predicted')
     plt.ylabel('Actual')
     plt.title('Confusion Matrix')
-    st.pyplot(fig_cm)
+    st.pyplot(plt.gcf())
     plt.clf()
 
     st.subheader("Classification Report")
-    st.text(classification_report(y_test, y_pred))
+    st.text(classification_report(y_test_bin, y_pred_bin))
 
     st.subheader("Feature Importance (Logistic Coefficients)")
-    feature_imp = pd.Series(np.abs(best_model.coef_[0]), index=X.columns)
-    feature_imp = feature_imp.sort_values(ascending=False).head(15)
-    fig_imp = px.bar(x=feature_imp.values, y=feature_imp.index, orientation='h', title='Top 15 Influential Features', color=feature_imp.values, color_continuous_scale='Viridis')
+    feature_imp = pd.Series(best_model.coef_[0], index=X.columns).sort_values(key=abs, ascending=False)
+    fig_imp = px.bar(x=feature_imp.values[:15], y=feature_imp.index[:15], orientation='h', title='Top 15 Influential Features', color=feature_imp.values[:15], color_continuous_scale='Viridis')
     fig_imp.update_layout(coloraxis_showscale=False)
     st.plotly_chart(fig_imp, use_container_width=True)
 
