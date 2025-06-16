@@ -34,63 +34,82 @@ if uploaded_file is not None:
     missing_cols = [col for col in required_cols if col not in df.columns]
     if missing_cols:
         st.error(f"Missing required columns: {', '.join(missing_cols)}")
+
+        # Show suggestions only when required columns are missing
+        st.sidebar.markdown("""
+        #### Tips for other datasets:
+        - Ensure `target` variable is clearly defined
+        - Use `StandardScaler` for numerical consistency
+        - Consider features like:
+            - Feature importances (SHAP, permutation)
+            - ROC Curve, Precision-Recall Curve
+            - Class Imbalance Dashboard
+            - Time-series (trend lines, seasonality)
+        - Upload multiple datasets for benchmarking
+        """)
+
         st.stop()
 
-    # Convert TotalCharges
     df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')
     df.dropna(inplace=True)
 
-    # Encode binary categorical columns
     binary_map = {'Yes': 1, 'No': 0, 'Female': 0, 'Male': 1}
     for col in ['gender', 'Partner', 'Dependents', 'PhoneService', 'PaperlessBilling', 'Churn']:
         if col in df.columns:
             df[col] = df[col].map(binary_map)
 
-    # Encode 'Contract' as ordinal
     if 'Contract' in df.columns:
         contract_encoder = OrdinalEncoder(categories=[['Month-to-month', 'One year', 'Two year']])
         df['Contract'] = contract_encoder.fit_transform(df[['Contract']])
 
-    # One-hot encode nominal columns
     nominal_cols = ['MultipleLines','InternetService','OnlineSecurity','OnlineBackup','DeviceProtection','TechSupport','StreamingTV','StreamingMovies','PaymentMethod']
     df = pd.get_dummies(df, columns=[col for col in nominal_cols if col in df.columns], drop_first=True)
 
-    # Drop customerID
     if 'customerID' in df.columns:
         df.drop('customerID', axis=1, inplace=True)
+
+    # Create a copy before processing for model
+    eda_df = df.copy()
+    eda_df['Churn'] = eda_df['Churn'].map({0: 'No', 1: 'Yes'})
 
     # EDA section
     st.header("Exploratory Data Analysis")
 
-    churn_pie = df['Churn'].value_counts()
+    churn_pie = eda_df['Churn'].value_counts()
     fig_pie = px.pie(values=churn_pie.values, names=['No', 'Yes'], title='Churn Distribution', color_discrete_sequence=['skyblue', 'salmon'])
     st.plotly_chart(fig_pie, use_container_width=True)
 
-    fig_hist = px.histogram(df, x='MonthlyCharges', color='Churn', nbins=30, title='Monthly Charges by Churn')
-    st.plotly_chart(fig_hist, use_container_width=True)
+    fig1 = px.histogram(eda_df, x='MonthlyCharges', color='Churn', nbins=30, title='Monthly Charges by Churn')
+    fig1.update_layout(template='plotly_white')
+    st.plotly_chart(fig1, use_container_width=True)
 
-    fig_tenure = px.histogram(df, x='tenure', color='Churn', nbins=30, title='Tenure by Churn')
-    st.plotly_chart(fig_tenure, use_container_width=True)
+    fig2 = px.histogram(eda_df, x='tenure', color='Churn', nbins=30, title='Tenure by Churn')
+    fig2.update_layout(template='plotly_white')
+    st.plotly_chart(fig2, use_container_width=True)
 
-    # Classification preprocessing: 60/20/20
+    # Optional: Correlation matrix heatmap
+    st.subheader("Feature Correlation Heatmap")
+    corr = df.corr()
+    fig_corr = px.imshow(corr, text_auto=True, title="Correlation Matrix", aspect="auto")
+    fig_corr.update_layout(template='plotly_white')
+    st.plotly_chart(fig_corr, use_container_width=True)
+
+    # Model section
     X = df.drop('Churn', axis=1)
     y = df['Churn']
 
     X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.4, stratify=y, random_state=42)
     X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, stratify=y_temp, random_state=42)
 
-    # Balance training data with SMOTE
     sm = SMOTE(random_state=42)
     X_train_bal, y_train_bal = sm.fit_resample(X_train, y_train)
 
-    # Scale numerical columns
     num_cols = ['tenure', 'MonthlyCharges', 'TotalCharges']
     scaler = StandardScaler()
     X_train_bal[num_cols] = scaler.fit_transform(X_train_bal[num_cols])
     X_val[num_cols] = scaler.transform(X_val[num_cols])
     X_test[num_cols] = scaler.transform(X_test[num_cols])
 
-    # Logistic Regression Model
     st.header("Logistic Regression Model")
     model = LogisticRegression(max_iter=1000, solver='liblinear', random_state=42)
     model.fit(X_train_bal, y_train_bal)
@@ -109,14 +128,12 @@ if uploaded_file is not None:
     st.write(f"**F1 Score**: {f1:.4f}")
     st.write(f"**ROC AUC**: {auc:.4f}")
 
-    # Confusion Matrix
     st.subheader("Confusion Matrix")
     cm = confusion_matrix(y_test, y_pred)
     fig_cm = go.Figure(data=go.Heatmap(z=cm, x=['Pred 0','Pred 1'], y=['True 0','True 1'], colorscale='Blues'))
-    fig_cm.update_layout(margin=dict(t=20, l=40, r=40, b=20))
+    fig_cm.update_layout(margin=dict(t=20, l=40, r=40, b=20), template='plotly_white')
     st.plotly_chart(fig_cm, use_container_width=True)
 
-    # Classification report
     st.subheader("Classification Report")
     st.text(classification_report(y_test, y_pred))
 
