@@ -46,37 +46,38 @@ if uploaded_file is not None:
 
     st.header("Exploratory Data Analysis")
 
-    st.subheader("Churn Table")
-    churn_table = eda_df['Churn'].value_counts().reset_index()
-    churn_table.columns = ['Churn Status', 'Quantity']
-    churn_table['Percentage'] = churn_table['Quantity'] / churn_table['Quantity'].sum() * 100
-    churn_table['Percentage'] = churn_table['Percentage'].map("{:.2f}%".format)
-    st.dataframe(churn_table)
+    with st.expander("Toggle EDA Panel"):
+        st.subheader("Churn Table")
+        churn_table = eda_df['Churn'].value_counts().reset_index()
+        churn_table.columns = ['Churn Status', 'Quantity']
+        churn_table['Percentage'] = churn_table['Quantity'] / churn_table['Quantity'].sum() * 100
+        churn_table['Percentage'] = churn_table['Percentage'].map("{:.2f}%".format)
+        st.dataframe(churn_table)
 
-    st.subheader("Monthly Charges Distribution by Churn")
-    plt.figure(figsize=(10, 5))
-    sns.kdeplot(data=eda_df, x='MonthlyCharges', hue='Churn', fill=True)
-    plt.title('Monthly Charges Distribution by Churn')
-    plt.xlabel('Monthly Charges')
-    plt.ylabel('Density')
-    st.pyplot(plt.gcf())
-    plt.clf()
+        st.subheader("Monthly Charges Distribution by Churn")
+        fig_monthly = plt.figure(figsize=(8, 4))
+        sns.kdeplot(data=eda_df, x='MonthlyCharges', hue='Churn', fill=True)
+        plt.title('Monthly Charges Distribution by Churn')
+        plt.xlabel('Monthly Charges')
+        plt.ylabel('Density')
+        st.pyplot(fig_monthly)
+        plt.clf()
 
-    st.subheader("Tenure by Churn")
-    fig_tenure = px.box(eda_df, x='Churn', y='tenure', color='Churn')
-    st.plotly_chart(fig_tenure, use_container_width=True)
+        st.subheader("Tenure by Churn")
+        fig_tenure = px.box(eda_df, x='Churn', y='tenure', color='Churn')
+        st.plotly_chart(fig_tenure, use_container_width=True)
 
-    st.subheader("Churn Rate by Tenure Group")
-    eda_df['TenureGroup'] = pd.cut(eda_df['tenure'], bins=[0, 12, 24, 36, 48, 60, 72], labels=['0-12', '13-24', '25-36', '37-48', '49-60', '61-72'])
-    churn_by_tenure = eda_df.groupby('TenureGroup')['Churn'].value_counts(normalize=True).rename("Percent").reset_index()
-    churn_by_tenure['Percent'] *= 100
-    fig_tenuregroup = px.bar(churn_by_tenure, x='TenureGroup', y='Percent', color='Churn', barmode='group', title='Churn Rate by Tenure Group')
-    st.plotly_chart(fig_tenuregroup, use_container_width=True)
+        st.subheader("Churn Rate by Tenure Group")
+        eda_df['TenureGroup'] = pd.cut(eda_df['tenure'], bins=[0, 12, 24, 36, 48, 60, 72], labels=['0-12', '13-24', '25-36', '37-48', '49-60', '61-72'])
+        churn_by_tenure = eda_df.groupby('TenureGroup')['Churn'].value_counts(normalize=True).rename("Percent").reset_index()
+        churn_by_tenure['Percent'] *= 100
+        fig_tenuregroup = px.bar(churn_by_tenure, x='TenureGroup', y='Percent', color='Churn', barmode='group', title='Churn Rate by Tenure Group')
+        st.plotly_chart(fig_tenuregroup, use_container_width=True)
 
-    st.subheader("Contract Type vs Churn")
-    if 'Contract' in eda_df.columns:
-        fig_contract = px.histogram(eda_df, x='Contract', color='Churn', barmode='group')
-        st.plotly_chart(fig_contract, use_container_width=True)
+        st.subheader("Contract Type vs Churn")
+        if 'Contract' in eda_df.columns:
+            fig_contract = px.histogram(eda_df, x='Contract', color='Churn', barmode='group')
+            st.plotly_chart(fig_contract, use_container_width=True)
 
     binary_map = {'Yes': 1, 'No': 0, 'Female': 0, 'Male': 1}
     for col in ['gender', 'Partner', 'Dependents', 'PhoneService', 'PaperlessBilling', 'Churn']:
@@ -84,7 +85,7 @@ if uploaded_file is not None:
             df[col] = df[col].map(binary_map)
 
     if 'Contract' in df.columns:
-        contract_encoder = OrdinalEncoder(categories=[['Month-to-month', 'One year', 'Two year']])
+        contract_encoder = OrdinalEncoder(categories=[["Month-to-month", "One year", "Two year"]])
         df['Contract'] = contract_encoder.fit_transform(df[['Contract']])
 
     nominal_cols = ['MultipleLines','InternetService','OnlineSecurity','OnlineBackup','DeviceProtection','TechSupport','StreamingTV','StreamingMovies','PaymentMethod']
@@ -152,9 +153,25 @@ if uploaded_file is not None:
     st.text(classification_report(y_test, y_pred))
 
     st.subheader("Feature Importance (Logistic Coefficients)")
-    feature_imp = pd.Series(best_model.coef_[0], index=X.columns).sort_values(key=abs, ascending=False)
-    fig_imp = px.bar(x=feature_imp.values[:15], y=feature_imp.index[:15], orientation='h', title='Top 15 Influential Features')
-    st.plotly_chart(fig_imp, use_container_width=True)
+    feature_coefs = pd.Series(best_model.coef_[0], index=X.columns)
+    abs_feature_coefs = feature_coefs.abs().sort_values(ascending=False)
+    top_features = abs_feature_coefs.head(10)
+    colors = sns.color_palette("viridis", len(top_features))
+    plt.figure(figsize=(10, 5))
+    sns.barplot(x=top_features.values, y=top_features.index, palette=colors)
+    plt.xlabel("Absolute Coefficient Value")
+    plt.ylabel("Features")
+    plt.title("Top 10 Most Important Features (Logistic Regression)")
+    st.pyplot(plt.gcf())
+    plt.clf()
+
+    # Optional: Download results
+    st.subheader("Download Model Results")
+    results_df = pd.DataFrame({
+        "Metric": ["Accuracy", "Precision", "Recall", "F1 Score", "ROC AUC"],
+        "Score": [acc, prec, rec, f1, auc]
+    })
+    st.download_button("Download Metrics CSV", results_df.to_csv(index=False), file_name="model_metrics.csv")
 
 # Footer logo and credits
 st.markdown("""
