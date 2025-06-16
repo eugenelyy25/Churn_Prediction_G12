@@ -55,7 +55,7 @@ if uploaded_file is not None:
         st.dataframe(churn_table)
 
         st.subheader("Monthly Charges Distribution by Churn")
-        fig_monthly = plt.figure(figsize=(8, 4))
+        fig_monthly = plt.figure(figsize=(6, 3))
         sns.kdeplot(data=eda_df, x='MonthlyCharges', hue='Churn', fill=True)
         plt.title('Monthly Charges Distribution by Churn')
         plt.xlabel('Monthly Charges')
@@ -141,11 +141,11 @@ if uploaded_file is not None:
     st.write(f"**ROC AUC**: {auc:.4f}")
 
     st.subheader("Confusion Matrix")
-    fig_cm, ax_cm = plt.subplots(figsize=(3, 2))
-    sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, fmt='d', cmap='Blues', ax=ax_cm, xticklabels=['Predicted No', 'Predicted Yes'], yticklabels=['Actual No', 'Actual Yes'])
-    ax_cm.set_xlabel('Predicted')
-    ax_cm.set_ylabel('Actual')
-    ax_cm.set_title('Confusion Matrix')
+    fig_cm = plt.figure(figsize=(4, 3))
+    sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, fmt='d', cmap='Blues', xticklabels=['Predicted No', 'Predicted Yes'], yticklabels=['Actual No', 'Actual Yes'])
+    plt.xlabel('Predicted')
+    plt.ylabel('Actual')
+    plt.title('Confusion Matrix')
     st.pyplot(fig_cm)
     plt.clf()
 
@@ -154,11 +154,18 @@ if uploaded_file is not None:
 
     st.subheader("Feature Importance (Logistic Coefficients)")
     feature_imp = pd.Series(best_model.coef_[0], index=X.columns).sort_values(key=abs, ascending=False)
-    fig_imp = px.bar(x=feature_imp.values[:15], y=feature_imp.index[:15], orientation='h', title='Top 15 Influential Features', color=feature_imp.values[:15], color_continuous_scale='Viridis')
-    fig_imp.update_layout(coloraxis_showscale=False)
+    color_scale = px.colors.qualitative.Plotly * 3
+    fig_imp = px.bar(
+        x=feature_imp.values[:15],
+        y=feature_imp.index[:15],
+        orientation='h',
+        title='Top 15 Influential Features',
+        color=feature_imp.index[:15],
+        color_discrete_sequence=color_scale
+    )
+    fig_imp.update_layout(showlegend=False)
     st.plotly_chart(fig_imp, use_container_width=True)
 
-    # Optional: Download results
     st.subheader("Download Model Results")
     results_df = pd.DataFrame({
         "Metric": ["Accuracy", "Precision", "Recall", "F1 Score", "ROC AUC"],
