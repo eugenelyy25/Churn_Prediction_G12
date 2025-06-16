@@ -112,7 +112,9 @@ if uploaded_file is not None:
     random_search.fit(X_train_bal, y_train_bal)
 
     best_model = random_search.best_estimator_
-    st.write("Best Parameters:", random_search.best_params_)
+    best_params_df = pd.DataFrame([random_search.best_params_])
+    st.subheader("Best Hyperparameters")
+    st.dataframe(best_params_df)
 
     y_pred = best_model.predict(X_test)
     y_proba = best_model.predict_proba(X_test)[:, 1]
