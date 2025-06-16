@@ -1,9 +1,20 @@
-streamlit
-pandas
-numpy
-matplotlib
-seaborn
-scikit-learn==1.4.2
-imbalanced-learn==0.12.2
-xgboost
-plotly
+# Core libraries
+numpy==1.24.4
+pandas==2.0.3
+scikit-learn==1.3.0
+matplotlib==3.7.2
+seaborn==0.12.2
+
+# Advanced modeling
+xgboost==1.7.6
+imblearn==0.11.0
+
+# Model tuning
+scipy==1.10.1
+
+# App deployment
+streamlit==1.27.2
+
+# Jupyter
+jupyterlab==4.0.6
+notebook==7.0.3
