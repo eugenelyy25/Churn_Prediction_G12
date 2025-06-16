@@ -26,25 +26,22 @@ A synthetic telco churn dataset (or real dataset if accessible) with the followi
 
 ---
 
-## 🧪 Project Structure
+## 🧪 Structure
 
-```bash
-project-root/
-│
-├── data/                   # Contains the dataset
-├── notebooks/              # Jupyter notebooks for each stage
-│   ├── 01_data_preprocessing.ipynb
-│   ├── 02_eda_visualization.ipynb
-│   ├── 03_model_baseline.ipynb
-│   ├── 04_model_tuning.ipynb
-│   ├── 05_model_evaluation.ipynb
-│
-├── app/
-│   └── streamlit_app.py    # Streamlit application for deployment
-│
-├── reports/
-│   └── churn_model_performance.md
-│
-├── requirements.txt        # Python dependencies
-├── environment.yml         # Optional Conda environment
-└── README.md               # Project overview and setup instructions
+This repository include:
+
+- README with setup and run instructions
+- Notebook file (ChurnPrediction.ipynb) using OSEMN Framework
+    - Obtain
+    - Scrub
+    - Explore
+    - Model
+        - KNN
+        - SVC
+        - Logistic Regression
+        - XGBoost
+        - LOGREG + ADABOOST
+    - Interpret
+- Streamlit Deployment Script (ChurnPredictionApp.py)
+- Dataset (telco_data.csv)
+- requirements.txt for reproducibility
