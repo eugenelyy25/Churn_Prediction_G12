@@ -53,6 +53,37 @@ if uploaded_file is not None:
     df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')
     df.dropna(inplace=True)
 
+    # Create a copy of the original for EDA purposes
+    eda_df = df.copy()
+
+    # Properly map churn for EDA
+    eda_df['Churn'] = eda_df['Churn'].replace({'Yes': 1, 'No': 0}) if eda_df['Churn'].dtype == 'object' else eda_df['Churn']
+    eda_df['Churn'] = eda_df['Churn'].map({1: 'Yes', 0: 'No'})
+
+    st.header("Exploratory Data Analysis")
+
+    st.subheader("Churn Distribution")
+    churn_counts = eda_df['Churn'].value_counts()
+    churn_fig = px.pie(names=churn_counts.index, values=churn_counts.values,
+                       color_discrete_sequence=px.colors.sequential.RdBu,
+                       title='Churn Breakdown')
+    st.plotly_chart(churn_fig, use_container_width=True)
+
+    st.subheader("Monthly Charges by Churn")
+    fig_monthly = px.box(eda_df, x='Churn', y='MonthlyCharges', color='Churn')
+    st.plotly_chart(fig_monthly, use_container_width=True)
+
+    st.subheader("Tenure by Churn")
+    fig_tenure = px.box(eda_df, x='Churn', y='tenure', color='Churn')
+    st.plotly_chart(fig_tenure, use_container_width=True)
+
+    st.subheader("Contract Type vs Churn")
+    if 'Contract' in eda_df.columns:
+        fig_contract = px.histogram(eda_df, x='Contract', color='Churn', barmode='group')
+        st.plotly_chart(fig_contract, use_container_width=True)
+
+    # END OF EDA SECTION — do not modify model block below
+
     binary_map = {'Yes': 1, 'No': 0, 'Female': 0, 'Male': 1}
     for col in ['gender', 'Partner', 'Dependents', 'PhoneService', 'PaperlessBilling', 'Churn']:
         if col in df.columns:
@@ -67,33 +98,6 @@ if uploaded_file is not None:
 
     if 'customerID' in df.columns:
         df.drop('customerID', axis=1, inplace=True)
-
-    # EDA section (before modeling and encoding target back)
-    eda_df = df.copy()
-    eda_df['Churn'] = eda_df['Churn'].map({0: 'No', 1: 'Yes'})
-
-    st.header("Exploratory Data Analysis")
-
-    churn_pie = eda_df['Churn'].value_counts()
-    fig_pie = px.pie(values=churn_pie.values, names=churn_pie.index, title='Churn Distribution', color_discrete_sequence=['skyblue', 'salmon'])
-    st.plotly_chart(fig_pie, use_container_width=True)
-
-    if 'MonthlyCharges' in eda_df.columns:
-        fig1 = px.histogram(eda_df, x='MonthlyCharges', color='Churn', nbins=30, title='Monthly Charges by Churn')
-        fig1.update_layout(template='plotly_white')
-        st.plotly_chart(fig1, use_container_width=True)
-
-    if 'tenure' in eda_df.columns:
-        fig2 = px.histogram(eda_df, x='tenure', color='Churn', nbins=30, title='Tenure by Churn')
-        fig2.update_layout(template='plotly_white')
-        st.plotly_chart(fig2, use_container_width=True)
-
-    # Optional: Correlation matrix heatmap
-    st.subheader("Feature Correlation Heatmap")
-    corr = df.corr()
-    fig_corr = px.imshow(corr, text_auto=True, title="Correlation Matrix", aspect="auto")
-    fig_corr.update_layout(template='plotly_white')
-    st.plotly_chart(fig_corr, use_container_width=True)
 
     # Model section
     X = df.drop('Churn', axis=1)
