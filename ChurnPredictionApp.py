@@ -15,6 +15,11 @@ from imblearn.over_sampling import SMOTE
 # Streamlit config
 st.set_page_config(layout="wide")
 
+# Toggle theme
+theme = st.sidebar.radio("Choose Theme", ["Light", "Dark"])
+if theme == "Dark":
+    st.markdown("""<style>body { background-color: #0e1117; color: #ffffff; }</style>""", unsafe_allow_html=True)
+
 st.markdown("""
 <div style="background-color: #f0f2f6; padding: 10px 20px; border-radius: 10px;">
     <h2 style="color:#333;">Customer Churn Prediction App</h2>
@@ -46,37 +51,38 @@ if uploaded_file is not None:
 
     st.header("Exploratory Data Analysis")
 
-    st.subheader("Churn Table")
-    churn_table = eda_df['Churn'].value_counts().reset_index()
-    churn_table.columns = ['Churn Status', 'Quantity']
-    churn_table['Percentage'] = churn_table['Quantity'] / churn_table['Quantity'].sum() * 100
-    churn_table['Percentage'] = churn_table['Percentage'].map("{:.2f}%".format)
-    st.dataframe(churn_table)
+    with st.expander("Toggle EDA Panel"):
+        st.subheader("Churn Table")
+        churn_table = eda_df['Churn'].value_counts().reset_index()
+        churn_table.columns = ['Churn Status', 'Quantity']
+        churn_table['Percentage'] = churn_table['Quantity'] / churn_table['Quantity'].sum() * 100
+        churn_table['Percentage'] = churn_table['Percentage'].map("{:.2f}%".format)
+        st.dataframe(churn_table)
 
-    st.subheader("Monthly Charges Distribution by Churn")
-    fig_monthly = plt.figure(figsize=(8, 4))
-    sns.kdeplot(data=eda_df, x='MonthlyCharges', hue='Churn', fill=True)
-    plt.title('Monthly Charges Distribution by Churn')
-    plt.xlabel('Monthly Charges')
-    plt.ylabel('Density')
-    st.pyplot(fig_monthly)
-    plt.clf()
+        st.subheader("Monthly Charges Distribution by Churn")
+        fig_monthly = plt.figure(figsize=(8, 4))
+        sns.kdeplot(data=eda_df, x='MonthlyCharges', hue='Churn', fill=True)
+        plt.title('Monthly Charges Distribution by Churn')
+        plt.xlabel('Monthly Charges')
+        plt.ylabel('Density')
+        st.pyplot(fig_monthly)
+        plt.clf()
 
-    st.subheader("Tenure by Churn")
-    fig_tenure = px.box(eda_df, x='Churn', y='tenure', color='Churn')
-    st.plotly_chart(fig_tenure, use_container_width=True)
+        st.subheader("Tenure by Churn")
+        fig_tenure = px.box(eda_df, x='Churn', y='tenure', color='Churn')
+        st.plotly_chart(fig_tenure, use_container_width=True)
 
-    st.subheader("Churn Rate by Tenure Group")
-    eda_df['TenureGroup'] = pd.cut(eda_df['tenure'], bins=[0, 12, 24, 36, 48, 60, 72], labels=['0-12', '13-24', '25-36', '37-48', '49-60', '61-72'])
-    churn_by_tenure = eda_df.groupby('TenureGroup')['Churn'].value_counts(normalize=True).rename("Percent").reset_index()
-    churn_by_tenure['Percent'] *= 100
-    fig_tenuregroup = px.bar(churn_by_tenure, x='TenureGroup', y='Percent', color='Churn', barmode='group', title='Churn Rate by Tenure Group')
-    st.plotly_chart(fig_tenuregroup, use_container_width=True)
+        st.subheader("Churn Rate by Tenure Group")
+        eda_df['TenureGroup'] = pd.cut(eda_df['tenure'], bins=[0, 12, 24, 36, 48, 60, 72], labels=['0-12', '13-24', '25-36', '37-48', '49-60', '61-72'])
+        churn_by_tenure = eda_df.groupby('TenureGroup')['Churn'].value_counts(normalize=True).rename("Percent").reset_index()
+        churn_by_tenure['Percent'] *= 100
+        fig_tenuregroup = px.bar(churn_by_tenure, x='TenureGroup', y='Percent', color='Churn', barmode='group', title='Churn Rate by Tenure Group')
+        st.plotly_chart(fig_tenuregroup, use_container_width=True)
 
-    st.subheader("Contract Type vs Churn")
-    if 'Contract' in eda_df.columns:
-        fig_contract = px.histogram(eda_df, x='Contract', color='Churn', barmode='group')
-        st.plotly_chart(fig_contract, use_container_width=True)
+        st.subheader("Contract Type vs Churn")
+        if 'Contract' in eda_df.columns:
+            fig_contract = px.histogram(eda_df, x='Contract', color='Churn', barmode='group')
+            st.plotly_chart(fig_contract, use_container_width=True)
 
     binary_map = {'Yes': 1, 'No': 0, 'Female': 0, 'Male': 1}
     for col in ['gender', 'Partner', 'Dependents', 'PhoneService', 'PaperlessBilling', 'Churn']:
@@ -140,7 +146,7 @@ if uploaded_file is not None:
     st.write(f"**ROC AUC**: {auc:.4f}")
 
     st.subheader("Confusion Matrix")
-    plt.figure(figsize=(4, 3))
+    plt.figure(figsize=(2, 1.5))
     sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, fmt='d', cmap='Blues', xticklabels=['Predicted No', 'Predicted Yes'], yticklabels=['Actual No', 'Actual Yes'])
     plt.xlabel('Predicted')
     plt.ylabel('Actual')
@@ -156,6 +162,14 @@ if uploaded_file is not None:
     fig_imp = px.bar(x=feature_imp.values[:15], y=feature_imp.index[:15], orientation='h', title='Top 15 Influential Features', color=feature_imp.values[:15], color_continuous_scale='Viridis')
     fig_imp.update_layout(coloraxis_showscale=False)
     st.plotly_chart(fig_imp, use_container_width=True)
+
+    # Optional: Download results
+    st.subheader("Download Model Results")
+    results_df = pd.DataFrame({
+        "Metric": ["Accuracy", "Precision", "Recall", "F1 Score", "ROC AUC"],
+        "Score": [acc, prec, rec, f1, auc]
+    })
+    st.download_button("Download Metrics CSV", results_df.to_csv(index=False), file_name="model_metrics.csv")
 
 # Footer logo and credits
 st.markdown("""
