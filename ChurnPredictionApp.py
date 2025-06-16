@@ -6,7 +6,7 @@ import seaborn as sns
 import plotly.express as px
 import plotly.graph_objects as go
 
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from sklearn.preprocessing import StandardScaler, LabelEncoder, OrdinalEncoder
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
@@ -101,11 +101,21 @@ if uploaded_file is not None:
     X_val[num_cols] = scaler.transform(X_val[num_cols])
     X_test[num_cols] = scaler.transform(X_test[num_cols])
 
-    st.header("Logistic Regression Model")
-    model = LogisticRegression(max_iter=1000, solver='liblinear', random_state=42)
-    model.fit(X_train_bal, y_train_bal)
-    y_pred = model.predict(X_test)
-    y_proba = model.predict_proba(X_test)[:, 1]
+    st.header("Logistic Regression Model with Hyperparameter Tuning")
+    base_model = LogisticRegression(solver='liblinear', random_state=42)
+    param_dist = {
+        'C': np.logspace(-3, 3, 7),
+        'penalty': ['l1', 'l2'],
+        'solver': ['liblinear', 'saga']
+    }
+    random_search = RandomizedSearchCV(base_model, param_distributions=param_dist, n_iter=10, cv=5, scoring='accuracy', n_jobs=-1, random_state=42, verbose=0)
+    random_search.fit(X_train_bal, y_train_bal)
+
+    best_model = random_search.best_estimator_
+    st.write("Best Parameters:", random_search.best_params_)
+
+    y_pred = best_model.predict(X_test)
+    y_proba = best_model.predict_proba(X_test)[:, 1]
 
     acc = accuracy_score(y_test, y_pred)
     prec = precision_score(y_test, y_pred)
