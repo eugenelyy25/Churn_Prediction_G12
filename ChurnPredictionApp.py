@@ -16,9 +16,9 @@ from imblearn.over_sampling import SMOTE
 st.set_page_config(layout="wide")
 
 st.markdown("""
-<div style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); padding: 15px 25px; border-radius: 15px;">
-    <h2 style="color:#222;">Customer Churn Prediction App</h2>
-    <p style="color:#444;">
+<div style="background-color: #f0f2f6; padding: 10px 20px; border-radius: 10px;">
+    <h2 style="color:#333;">Customer Churn Prediction App</h2>
+    <p style="color:#555;">
         Explore key insights and predict churn using logistic regression. Balanced with SMOTE and enriched with EDA visuals.
     </p>
 </div>
@@ -45,32 +45,21 @@ if uploaded_file is not None:
 
     st.header("Exploratory Data Analysis")
 
-    st.subheader("Churn Distribution")
-    churn_counts = eda_df['Churn'].value_counts().reset_index()
-    churn_counts.columns = ['Status', 'Quantity']
-    churn_counts['Percentage'] = churn_counts['Quantity'] / churn_counts['Quantity'].sum() * 100
-
-    fig_pie = px.pie(churn_counts,
-                     names='Status',
-                     values='Quantity',
-                     color='Status',
-                     title='Churn Breakdown',
-                     hover_data=['Percentage'],
-                     color_discrete_map={"Yes": "salmon", "No": "skyblue"})
-    fig_pie.update_traces(textinfo='label+percent', hovertemplate='%{label}: %{value} customers<br>%{percent}')
-    st.plotly_chart(fig_pie, use_container_width=True)
+    st.subheader("Churn Table")
+    churn_table = eda_df['Churn'].value_counts().reset_index()
+    churn_table.columns = ['Churn Status', 'Quantity']
+    churn_table['Percentage'] = churn_table['Quantity'] / churn_table['Quantity'].sum() * 100
+    churn_table['Percentage'] = churn_table['Percentage'].map("{:.2f}%".format)
+    st.dataframe(churn_table)
 
     st.subheader("Monthly Charges Distribution by Churn")
-    fig_kde = px.histogram(eda_df,
-                           x='MonthlyCharges',
-                           color='Churn',
-                           marginal='rug',
-                           opacity=0.7,
-                           nbins=50,
-                           barmode='overlay',
-                           histnorm='density')
-    fig_kde.update_layout(title='Monthly Charges Distribution by Churn', xaxis_title='Monthly Charges', yaxis_title='Density')
-    st.plotly_chart(fig_kde, use_container_width=True)
+    plt.figure(figsize=(10, 5))
+    sns.kdeplot(data=eda_df, x='MonthlyCharges', hue='Churn', fill=True)
+    plt.title('Monthly Charges Distribution by Churn')
+    plt.xlabel('Monthly Charges')
+    plt.ylabel('Density')
+    st.pyplot(plt.gcf())
+    plt.clf()
 
     st.subheader("Tenure by Churn")
     fig_tenure = px.box(eda_df, x='Churn', y='tenure', color='Churn')
@@ -132,9 +121,13 @@ if uploaded_file is not None:
 
     st.subheader("Confusion Matrix")
     cm = confusion_matrix(y_test, y_pred)
-    fig_cm = px.imshow(cm, text_auto=True, color_continuous_scale='Blues', x=['Predicted No', 'Predicted Yes'], y=['Actual No', 'Actual Yes'])
-    fig_cm.update_layout(title="Confusion Matrix", xaxis_title="Predicted", yaxis_title="Actual")
-    st.plotly_chart(fig_cm, use_container_width=True)
+    plt.figure(figsize=(5, 4))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Predicted No', 'Predicted Yes'], yticklabels=['Actual No', 'Actual Yes'])
+    plt.xlabel('Predicted')
+    plt.ylabel('Actual')
+    plt.title('Confusion Matrix')
+    st.pyplot(plt.gcf())
+    plt.clf()
 
     st.subheader("Classification Report")
     st.text(classification_report(y_test, y_pred))
