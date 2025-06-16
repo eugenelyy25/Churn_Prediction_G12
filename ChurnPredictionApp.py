@@ -65,6 +65,13 @@ if uploaded_file is not None:
     fig_tenure = px.box(eda_df, x='Churn', y='tenure', color='Churn')
     st.plotly_chart(fig_tenure, use_container_width=True)
 
+    st.subheader("Churn Rate by Tenure Group")
+    eda_df['TenureGroup'] = pd.cut(eda_df['tenure'], bins=[0, 12, 24, 36, 48, 60, 72], labels=['0-12', '13-24', '25-36', '37-48', '49-60', '61-72'])
+    churn_by_tenure = eda_df.groupby('TenureGroup')['Churn'].value_counts(normalize=True).rename("Percent").reset_index()
+    churn_by_tenure['Percent'] *= 100
+    fig_tenuregroup = px.bar(churn_by_tenure, x='TenureGroup', y='Percent', color='Churn', barmode='group', title='Churn Rate by Tenure Group')
+    st.plotly_chart(fig_tenuregroup, use_container_width=True)
+
     st.subheader("Contract Type vs Churn")
     if 'Contract' in eda_df.columns:
         fig_contract = px.histogram(eda_df, x='Contract', color='Churn', barmode='group')
@@ -143,6 +150,11 @@ if uploaded_file is not None:
 
     st.subheader("Classification Report")
     st.text(classification_report(y_test, y_pred))
+
+    st.subheader("Feature Importance (Logistic Coefficients)")
+    feature_imp = pd.Series(best_model.coef_[0], index=X.columns).sort_values(key=abs, ascending=False)
+    fig_imp = px.bar(x=feature_imp.values[:15], y=feature_imp.index[:15], orientation='h', title='Top 15 Influential Features')
+    st.plotly_chart(fig_imp, use_container_width=True)
 
 # Footer logo
 st.markdown("""
