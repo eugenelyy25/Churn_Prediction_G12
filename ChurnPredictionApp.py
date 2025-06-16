@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.express as px
+import plotly.graph_objects as go
 
 from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from sklearn.preprocessing import StandardScaler, LabelEncoder, OrdinalEncoder
@@ -78,22 +79,20 @@ if uploaded_file is not None:
             fig_contract = px.histogram(eda_df, x='Contract', color='Churn', barmode='group')
             st.plotly_chart(fig_contract, use_container_width=True)
 
-    # ENCODING
-    df.drop('customerID', axis=1, inplace=True, errors='ignore')
-    df['Churn'] = df['Churn'].map({'Yes': 1, 'No': 0})
-
+    # Encoding
     num_cols = ['tenure', 'MonthlyCharges', 'TotalCharges']
     cat_cols_ohe = ['PaymentMethod', 'Contract', 'InternetService']
-    cat_cols_le = list(set(df.columns) - set(num_cols) - set(cat_cols_ohe) - {'Churn'})
+    cat_cols_le = list(set(df.columns) - set(num_cols) - set(cat_cols_ohe) - {'Churn', 'customerID'})
 
-    # Label Encoding
     for col in cat_cols_le:
         df[col] = LabelEncoder().fit_transform(df[col])
 
-    # One-hot Encoding
     df = pd.get_dummies(df, columns=cat_cols_ohe, drop_first=True)
 
-    # Train/Test Split and SMOTE
+    if 'customerID' in df.columns:
+        df.drop('customerID', axis=1, inplace=True)
+
+    # Model
     X = df.drop('Churn', axis=1)
     y = df['Churn']
 
@@ -151,8 +150,9 @@ if uploaded_file is not None:
     st.text(classification_report(y_test, y_pred))
 
     st.subheader("Feature Importance (Logistic Coefficients)")
-    feature_imp = pd.Series(best_model.coef_[0], index=X.columns).sort_values(key=abs, ascending=False)
-    fig_imp = px.bar(x=feature_imp.values[:15], y=feature_imp.index[:15], orientation='h', title='Top 15 Influential Features', color=feature_imp.values[:15], color_continuous_scale='Viridis')
+    feature_imp = pd.Series(np.abs(best_model.coef_[0]), index=X.columns)
+    feature_imp = feature_imp.sort_values(ascending=False).head(15)
+    fig_imp = px.bar(x=feature_imp.values, y=feature_imp.index, orientation='h', title='Top 15 Influential Features', color=feature_imp.values, color_continuous_scale='Viridis')
     fig_imp.update_layout(coloraxis_showscale=False)
     st.plotly_chart(fig_imp, use_container_width=True)
 
