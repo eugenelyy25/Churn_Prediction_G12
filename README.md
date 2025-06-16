@@ -26,12 +26,10 @@ A synthetic telco churn dataset (or real dataset if accessible) with the followi
 
 ---
 
-## 🧪 Structure
+## 🧪 Notebook Structure
 
-This repository include:
 
-- README with setup and run instructions
-- Notebook file (ChurnPrediction.ipynb) using OSEMN Framework
+- Based on OSEMN Framework
     - Obtain
     - Scrub
     - Explore
@@ -42,6 +40,13 @@ This repository include:
         - XGBoost
         - LOGREG + ADABOOST
     - Interpret
+ 
+---
+
+This repository include:
+
+- README with setup and run instructions
+- Notebook file (ChurnPrediction.ipynb) 
 - Streamlit Deployment Script (ChurnPredictionApp.py)
 - Dataset (telco_data.csv)
 - requirements.txt for reproducibility
