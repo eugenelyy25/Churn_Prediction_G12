@@ -19,7 +19,8 @@ st.markdown("""
 <div style="background-color: #f0f2f6; padding: 10px 20px; border-radius: 10px;">
     <h2 style="color:#333;">Customer Churn Prediction App</h2>
     <p style="color:#555;">
-        Explore key insights and predict churn using logistic regression. Balanced with SMOTE and enriched with EDA visuals.
+       This dashboard app would explore key insights and predict churn using logistic regression from the dataset. 
+       Displays important churn analysis as well as model accuracy with SMOTE balanced and hyperparameter tuning.
     </p>
 </div>
 """, unsafe_allow_html=True)
@@ -53,12 +54,12 @@ if uploaded_file is not None:
     st.dataframe(churn_table)
 
     st.subheader("Monthly Charges Distribution by Churn")
-    plt.figure(figsize=(10, 5))
+    fig_monthly = plt.figure(figsize=(8, 4))
     sns.kdeplot(data=eda_df, x='MonthlyCharges', hue='Churn', fill=True)
     plt.title('Monthly Charges Distribution by Churn')
     plt.xlabel('Monthly Charges')
     plt.ylabel('Density')
-    st.pyplot(plt.gcf())
+    st.pyplot(fig_monthly)
     plt.clf()
 
     st.subheader("Tenure by Churn")
@@ -83,7 +84,7 @@ if uploaded_file is not None:
             df[col] = df[col].map(binary_map)
 
     if 'Contract' in df.columns:
-        contract_encoder = OrdinalEncoder(categories=[['Month-to-month', 'One year', 'Two year']])
+        contract_encoder = OrdinalEncoder(categories=[["Month-to-month", "One year", "Two year"]])
         df['Contract'] = contract_encoder.fit_transform(df[['Contract']])
 
     nominal_cols = ['MultipleLines','InternetService','OnlineSecurity','OnlineBackup','DeviceProtection','TechSupport','StreamingTV','StreamingMovies','PaymentMethod']
@@ -139,9 +140,8 @@ if uploaded_file is not None:
     st.write(f"**ROC AUC**: {auc:.4f}")
 
     st.subheader("Confusion Matrix")
-    cm = confusion_matrix(y_test, y_pred)
-    plt.figure(figsize=(5, 4))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Predicted No', 'Predicted Yes'], yticklabels=['Actual No', 'Actual Yes'])
+    plt.figure(figsize=(4, 3))
+    sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, fmt='d', cmap='Blues', xticklabels=['Predicted No', 'Predicted Yes'], yticklabels=['Actual No', 'Actual Yes'])
     plt.xlabel('Predicted')
     plt.ylabel('Actual')
     plt.title('Confusion Matrix')
@@ -153,12 +153,17 @@ if uploaded_file is not None:
 
     st.subheader("Feature Importance (Logistic Coefficients)")
     feature_imp = pd.Series(best_model.coef_[0], index=X.columns).sort_values(key=abs, ascending=False)
-    fig_imp = px.bar(x=feature_imp.values[:15], y=feature_imp.index[:15], orientation='h', title='Top 15 Influential Features')
+    fig_imp = px.bar(x=feature_imp.values[:15], y=feature_imp.index[:15], orientation='h', title='Top 15 Influential Features', color=feature_imp.values[:15], color_continuous_scale='Viridis')
+    fig_imp.update_layout(coloraxis_showscale=False)
     st.plotly_chart(fig_imp, use_container_width=True)
 
-# Footer logo
+# Footer logo and credits
 st.markdown("""
 <div style='text-align: center; padding-top: 2em;'>
     <img src='https://download.logo.wine/logo/University_of_Malaya/University_of_Malaya-Logo.wine.png' width='180' style='max-width: 100%; height: auto;'>
+    <p style='color: #333; font-size: 14px; margin-top: 10px;'>
+        <strong>Group:</strong> 12 (Semester 2, Session 2024/2025 - WQD7001 Principles of Data Science)<br>
+        <strong>Contributors:</strong> LOO YUNG YI, MUHAMMAD FIRDAUS BIN CHE KOB, TANISYA PRISTI AZRELIA, YANG HONGBIN, YU JIAOJIAO, ZHANG YINAN
+    </p>
 </div>
 """, unsafe_allow_html=True)
