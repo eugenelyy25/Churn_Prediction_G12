@@ -15,11 +15,6 @@ from imblearn.over_sampling import SMOTE
 # Streamlit config
 st.set_page_config(layout="wide")
 
-# Toggle theme
-theme = st.sidebar.radio("Choose Theme", ["Light", "Dark"])
-if theme == "Dark":
-    st.markdown("""<style>body { background-color: #0e1117; color: #ffffff; }</style>""", unsafe_allow_html=True)
-
 st.markdown("""
 <div style="background-color: #f0f2f6; padding: 10px 20px; border-radius: 10px;">
     <h2 style="color:#333;">Customer Churn Prediction App</h2>
@@ -146,12 +141,12 @@ if uploaded_file is not None:
     st.write(f"**ROC AUC**: {auc:.4f}")
 
     st.subheader("Confusion Matrix")
-    plt.figure(figsize=(2, 1.5))
-    sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, fmt='d', cmap='Blues', xticklabels=['Predicted No', 'Predicted Yes'], yticklabels=['Actual No', 'Actual Yes'])
-    plt.xlabel('Predicted')
-    plt.ylabel('Actual')
-    plt.title('Confusion Matrix')
-    st.pyplot(plt.gcf())
+    fig_cm, ax_cm = plt.subplots(figsize=(3, 2))
+    sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, fmt='d', cmap='Blues', ax=ax_cm, xticklabels=['Predicted No', 'Predicted Yes'], yticklabels=['Actual No', 'Actual Yes'])
+    ax_cm.set_xlabel('Predicted')
+    ax_cm.set_ylabel('Actual')
+    ax_cm.set_title('Confusion Matrix')
+    st.pyplot(fig_cm)
     plt.clf()
 
     st.subheader("Classification Report")
