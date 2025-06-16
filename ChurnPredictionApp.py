@@ -4,7 +4,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.express as px
-import plotly.graph_objects as go
 
 from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from sklearn.preprocessing import StandardScaler, LabelEncoder, OrdinalEncoder
@@ -79,22 +78,22 @@ if uploaded_file is not None:
             fig_contract = px.histogram(eda_df, x='Contract', color='Churn', barmode='group')
             st.plotly_chart(fig_contract, use_container_width=True)
 
-    binary_map = {'Yes': 1, 'No': 0, 'Female': 0, 'Male': 1}
-    for col in ['gender', 'Partner', 'Dependents', 'PhoneService', 'PaperlessBilling', 'Churn']:
-        if col in df.columns:
-            df[col] = df[col].map(binary_map)
+    # ENCODING
+    df.drop('customerID', axis=1, inplace=True, errors='ignore')
+    df['Churn'] = df['Churn'].map({'Yes': 1, 'No': 0})
 
-    if 'Contract' in df.columns:
-        contract_encoder = OrdinalEncoder(categories=[["Month-to-month", "One year", "Two year"]])
-        df['Contract'] = contract_encoder.fit_transform(df[['Contract']])
+    num_cols = ['tenure', 'MonthlyCharges', 'TotalCharges']
+    cat_cols_ohe = ['PaymentMethod', 'Contract', 'InternetService']
+    cat_cols_le = list(set(df.columns) - set(num_cols) - set(cat_cols_ohe) - {'Churn'})
 
-    nominal_cols = ['MultipleLines','InternetService','OnlineSecurity','OnlineBackup','DeviceProtection','TechSupport','StreamingTV','StreamingMovies','PaymentMethod']
-    df = pd.get_dummies(df, columns=[col for col in nominal_cols if col in df.columns], drop_first=True)
+    # Label Encoding
+    for col in cat_cols_le:
+        df[col] = LabelEncoder().fit_transform(df[col])
 
-    if 'customerID' in df.columns:
-        df.drop('customerID', axis=1, inplace=True)
+    # One-hot Encoding
+    df = pd.get_dummies(df, columns=cat_cols_ohe, drop_first=True)
 
-    # Model section
+    # Train/Test Split and SMOTE
     X = df.drop('Churn', axis=1)
     y = df['Churn']
 
@@ -104,7 +103,6 @@ if uploaded_file is not None:
     sm = SMOTE(random_state=42)
     X_train_bal, y_train_bal = sm.fit_resample(X_train, y_train)
 
-    num_cols = ['tenure', 'MonthlyCharges', 'TotalCharges']
     scaler = StandardScaler()
     X_train_bal[num_cols] = scaler.fit_transform(X_train_bal[num_cols])
     X_val[num_cols] = scaler.transform(X_val[num_cols])
@@ -141,29 +139,22 @@ if uploaded_file is not None:
     st.write(f"**ROC AUC**: {auc:.4f}")
 
     st.subheader("Confusion Matrix")
-    plt.figure(figsize=(4, 3))
+    fig_cm = plt.figure(figsize=(4, 3))
     sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, fmt='d', cmap='Blues', xticklabels=['Predicted No', 'Predicted Yes'], yticklabels=['Actual No', 'Actual Yes'])
     plt.xlabel('Predicted')
     plt.ylabel('Actual')
     plt.title('Confusion Matrix')
-    st.pyplot(plt.gcf())
+    st.pyplot(fig_cm)
     plt.clf()
 
     st.subheader("Classification Report")
     st.text(classification_report(y_test, y_pred))
 
     st.subheader("Feature Importance (Logistic Coefficients)")
-    feature_coefs = pd.Series(best_model.coef_[0], index=X.columns)
-    abs_feature_coefs = feature_coefs.abs().sort_values(ascending=False)
-    top_features = abs_feature_coefs.head(10)
-    colors = sns.color_palette("viridis", len(top_features))
-    plt.figure(figsize=(10, 5))
-    sns.barplot(x=top_features.values, y=top_features.index, palette=colors)
-    plt.xlabel("Absolute Coefficient Value")
-    plt.ylabel("Features")
-    plt.title("Top 10 Most Important Features (Logistic Regression)")
-    st.pyplot(plt.gcf())
-    plt.clf()
+    feature_imp = pd.Series(best_model.coef_[0], index=X.columns).sort_values(key=abs, ascending=False)
+    fig_imp = px.bar(x=feature_imp.values[:15], y=feature_imp.index[:15], orientation='h', title='Top 15 Influential Features', color=feature_imp.values[:15], color_continuous_scale='Viridis')
+    fig_imp.update_layout(coloraxis_showscale=False)
+    st.plotly_chart(fig_imp, use_container_width=True)
 
     # Optional: Download results
     st.subheader("Download Model Results")
