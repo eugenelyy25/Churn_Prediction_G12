@@ -16,9 +16,9 @@ from imblearn.over_sampling import SMOTE
 st.set_page_config(layout="wide")
 
 st.markdown("""
-<div style="background-color: #f0f2f6; padding: 10px 20px; border-radius: 10px;">
-    <h2 style="color:#333;">Customer Churn Prediction App</h2>
-    <p style="color:#555;">
+<div style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); padding: 15px 25px; border-radius: 15px;">
+    <h2 style="color:#222;">Customer Churn Prediction App</h2>
+    <p style="color:#444;">
         Explore key insights and predict churn using logistic regression. Balanced with SMOTE and enriched with EDA visuals.
     </p>
 </div>
@@ -34,19 +34,6 @@ if uploaded_file is not None:
     missing_cols = [col for col in required_cols if col not in df.columns]
     if missing_cols:
         st.error(f"Missing required columns: {', '.join(missing_cols)}")
-
-        st.sidebar.markdown("""
-        #### Tips for other datasets:
-        - Ensure `target` variable is clearly defined
-        - Use `StandardScaler` for numerical consistency
-        - Consider features like:
-            - Feature importances (SHAP, permutation)
-            - ROC Curve, Precision-Recall Curve
-            - Class Imbalance Dashboard
-            - Time-series (trend lines, seasonality)
-        - Upload multiple datasets for benchmarking
-        """)
-
         st.stop()
 
     df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')
@@ -74,13 +61,17 @@ if uploaded_file is not None:
     st.plotly_chart(fig_pie, use_container_width=True)
 
     st.subheader("Monthly Charges Distribution by Churn")
-    plt.figure(figsize=(10, 5))
-    sns.kdeplot(data=eda_df, x='MonthlyCharges', hue='Churn', fill=False, common_norm=False)
-    plt.title('Monthly Charges Distribution by Churn')
-    plt.xlabel('Monthly Charges')
-    plt.ylabel('Density')
-    st.pyplot(plt.gcf())
-    plt.clf()
+    fig_kde, ax_kde = plt.subplots(figsize=(10, 5), facecolor='#1e1e2f')
+    sns.kdeplot(data=eda_df, x='MonthlyCharges', hue='Churn', fill=False, common_norm=False, ax=ax_kde)
+    ax_kde.set_title('Monthly Charges Distribution by Churn', fontsize=14, color='white')
+    ax_kde.set_xlabel('Monthly Charges', fontsize=12, color='white')
+    ax_kde.set_ylabel('Density', fontsize=12, color='white')
+    ax_kde.set_facecolor('#2c2c3e')
+    fig_kde.patch.set_facecolor('#1e1e2f')
+    for spine in ax_kde.spines.values():
+        spine.set_edgecolor('white')
+    ax_kde.tick_params(colors='white')
+    st.pyplot(fig_kde)
 
     st.subheader("Tenure by Churn")
     fig_tenure = px.box(eda_df, x='Churn', y='tenure', color='Churn')
@@ -142,12 +133,12 @@ if uploaded_file is not None:
 
     st.subheader("Confusion Matrix")
     cm = confusion_matrix(y_test, y_pred)
-    cm_fig, ax_cm = plt.subplots()
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Not Churn', 'Churn'], yticklabels=['Not Churn', 'Churn'], ax=ax_cm)
+    fig_cm, ax_cm = plt.subplots()
+    sns.heatmap(cm, annot=True, fmt='d', cmap='magma', xticklabels=['Not Churn', 'Churn'], yticklabels=['Not Churn', 'Churn'], ax=ax_cm)
     ax_cm.set_xlabel('Predicted')
     ax_cm.set_ylabel('Actual')
-    ax_cm.set_title('Confusion Matrix')
-    st.pyplot(cm_fig)
+    ax_cm.set_title('Confusion Matrix with Glossy Style')
+    st.pyplot(fig_cm)
 
     st.subheader("Classification Report")
     st.text(classification_report(y_test, y_pred))
