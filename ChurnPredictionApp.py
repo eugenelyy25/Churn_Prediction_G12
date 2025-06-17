@@ -19,7 +19,7 @@ st.markdown("""
 <div style="background-color: #f0f2f6; padding: 10px 20px; border-radius: 10px;">
     <h2 style="color:#333;">Customer Churn Prediction App</h2>
     <p style="color:#555;">
-       This dashboard app would explore key insights and predict churn using logistic regression from the dataset. 
+       This dashboard app would explore key insights and predict churn using logistic regression from the dataset.<br> 
        Displays important churn analysis as well as model accuracy with SMOTE balanced and hyperparameter tuning.
     </p>
 </div>
@@ -44,7 +44,7 @@ if uploaded_file is not None:
     eda_df['Churn'] = eda_df['Churn'].replace({'Yes': 1, 'No': 0}) if eda_df['Churn'].dtype == 'object' else eda_df['Churn']
     eda_df['Churn'] = eda_df['Churn'].map({1: 'Yes', 0: 'No'})
 
-    st.header("Exploratory Data Analysis")
+    st.header("Churn Analysis")
 
     with st.expander("Toggle EDA Panel"):
         st.subheader("Churn Table")
@@ -160,7 +160,7 @@ if uploaded_file is not None:
     fig_imp.update_layout(coloraxis_showscale=False)
     st.plotly_chart(fig_imp, use_container_width=True)
 
-    # Optional: Download results
+    # Allow user export results
     st.subheader("Download Model Results")
     results_df = pd.DataFrame({
         "Metric": ["Accuracy", "Precision", "Recall", "F1 Score", "ROC AUC"],
@@ -168,7 +168,7 @@ if uploaded_file is not None:
     })
     st.download_button("Download Metrics CSV", results_df.to_csv(index=False), file_name="model_metrics.csv")
 
-# Footer logo and credits
+# Footer and credits
 st.markdown("""
 <div style='text-align: center; padding-top: 2em;'>
     <img src='https://download.logo.wine/logo/University_of_Malaya/University_of_Malaya-Logo.wine.png' width='180' style='max-width: 100%; height: auto;'>
