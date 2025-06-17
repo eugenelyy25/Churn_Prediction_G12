@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import io
 import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.express as px
@@ -29,14 +30,17 @@ if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
 
     # Show initial shape and info, matching the notebook
+
+# ... previous code ...
     st.info(f"Dataset contains {df.shape[0]} rows and {df.shape[1]} columns")
     st.write(df.head())
 
-    buffer = []
+    buffer = io.StringIO()
     df.info(buf=buffer)
-    s = "\n".join(buffer)
+    s = buffer.getvalue()
     st.text(s)
     st.write(df.describe(include='all').T)
+# ... remaining code ...
 
     # Only coerce 'TotalCharges' and drop rows where it's NA, like in the notebook
     df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')
