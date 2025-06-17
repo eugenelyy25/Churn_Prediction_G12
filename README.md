@@ -6,6 +6,9 @@ Customer churn prediction is essential for telecom companies to retain customers
 
 The best-performing model (Logistic Regression with AdaBoost) was deployed as a web application using Streamlit to enable real-time, user-friendly predictions.
 
+Current Working Demo:
+https://churnpredictiong12-mgts4rh5cca8bqydxa6htf.streamlit.app/
+
 ---
 
 ## 🎯 Objectives
