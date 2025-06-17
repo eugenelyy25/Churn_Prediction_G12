@@ -33,6 +33,9 @@ A synthetic telco churn dataset (or real dataset if accessible) with the followi
     - Obtain
     - Scrub
     - Explore
+        - Categorical Variables
+        - Continuous Variables
+        - Correlation Heatmaps
     - Model
         - KNN
         - SVC
@@ -40,6 +43,8 @@ A synthetic telco churn dataset (or real dataset if accessible) with the followi
         - XGBoost
         - LOGREG + ADABOOST
     - Interpret
+        - Comparison for Evaluation
+        - Deployment Research
  
 ---
 
